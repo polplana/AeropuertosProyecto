@@ -1,0 +1,212 @@
+@baseUrl = http://localhost:3000
+
+### Registrar usuario normal
+# @name registerUser
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Ana Torres",
+  "email": "ana@example.com",
+  "password": "una frase de acceso segura"
+}
+
+### Login de usuario normal
+# @name loginUser
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "una frase de acceso segura"
+}
+
+### Extraer token de Ana
+@userToken = {{loginUser.response.body.accessToken}}
+
+### Perfil de Ana
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Buscar ciudades cuyo nombre contiene "mad"
+GET {{baseUrl}}/api/cities?search=mad
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Listar ciudades con aeropuertos
+GET {{baseUrl}}/api/cities/with-airports
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Listar aeropuertos de París (id 3 en los datos iniciales)
+GET {{baseUrl}}/api/cities/3/airports
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Ana, que es usuario normal, no puede crear una ciudad: debe responder 403
+POST {{baseUrl}}/api/cities
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Valencia",
+  "country": "España"
+}
+
+### Login de administración
+# @name loginAdmin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "admin@aeropuertos.test",
+  "password": "password"
+}
+
+### Extraer token de administrador
+@adminToken = {{loginAdmin.response.body.accessToken}}
+
+### El administrador crea Valencia
+# @name createCity
+POST {{baseUrl}}/api/cities
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Valencia",
+  "country": "España"
+}
+
+### Extraer id de la ciudad creada
+@ciudadId = {{createCity.response.body.id}}
+
+### Modificar ciudad
+PUT {{baseUrl}}/api/cities/{{ciudadId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "València",
+  "country": "España"
+}
+
+### El administrador añade el aeropuerto de Valencia
+# @name createAirport
+POST {{baseUrl}}/api/airports
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "iataCode": "VLC",
+  "name": "Aeropuerto de Valencia",
+  "cityId": {{ciudadId}}
+}
+
+### Extraer id del aeropuerto creado
+@airportId = {{createAirport.response.body.id}}
+
+### Filtrar aeropuertos por ciudad
+GET {{baseUrl}}/api/airports?cityId={{ciudadId}}
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Consultar aeropuerto por id
+GET {{baseUrl}}/api/airports/{{airportId}}
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Modificar aeropuerto
+PUT {{baseUrl}}/api/airports/{{airportId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "iataCode": "VLC",
+  "name": "Valencia Airport",
+  "cityId": {{ciudadId}}
+}
+
+### Registro con correo duplicado (debe responder 409)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Otra Ana",
+  "email": "ana@example.com",
+  "password": "otra frase de acceso segura"
+}
+
+### Login con contraseña incorrecta (debe responder 401)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "password-erroneo"
+}
+
+### Petición sin token (debe responder 401)
+GET {{baseUrl}}/api/auth/me
+Accept: application/json
+
+### Búsqueda sin coincidencias (debe responder 200 con [])
+GET {{baseUrl}}/api/cities?search=inexistente
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Ciudad inexistente (debe responder 404)
+GET {{baseUrl}}/api/cities/9999/airports
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Aeropuerto inexistente (debe responder 404)
+GET {{baseUrl}}/api/airports/9999
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Código IATA duplicado (debe responder 409)
+POST {{baseUrl}}/api/airports
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "iataCode": "VLC",
+  "name": "Otro Aeropuerto",
+  "cityId": {{ciudadId}}
+}
+
+### Ciudad inexistente para aeropuerto (debe responder 404)
+POST {{baseUrl}}/api/airports
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "iataCode": "BIO",
+  "name": "Bilbao",
+  "cityId": 9999
+}
+
+### Código IATA no válido (debe responder 422)
+POST {{baseUrl}}/api/airports
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "iataCode": "INCORRECTO",
+  "name": "Aeropuerto",
+  "cityId": {{ciudadId}}
+}
