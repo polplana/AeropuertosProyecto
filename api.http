@@ -210,3 +210,27 @@ Accept: application/json
   "name": "Aeropuerto",
   "cityId": {{ciudadId}}
 }
+
+### ==============================
+### RUTAS PÚBLICAS
+### ==============================
+
+### Buscar ciudades públicamente por nombre (sin token)
+GET {{baseUrl}}/api/public/cities?search=mad
+Accept: application/json
+
+### Búsqueda pública sin resultados (debe responder 200 con [])
+GET {{baseUrl}}/api/public/cities?search=inexistente
+Accept: application/json
+
+### Consultar aeropuertos de una ciudad públicamente (sin token)
+GET {{baseUrl}}/api/public/cities/3/airports
+Accept: application/json
+
+### Consultar aeropuertos con ciudad inexistente (debe responder 404)
+GET {{baseUrl}}/api/public/cities/9999/airports
+Accept: application/json
+
+### Consultar aeropuertos con id no válido (debe responder 422)
+GET {{baseUrl}}/api/public/cities/abc/airports
+Accept: application/json

@@ -17,8 +17,8 @@ export async function listCitiesWithAirports() {
 export async function listAirportsByCity(idValue) {
   const cityId = Number(idValue);
 
-  if (!Number.isInteger(cityId) || cityId <= 0) {
-    throw new AppError(404, "Ciudad no encontrada");
+  if (!/^\d+$/.test(String(idValue)) || cityId <= 0) {
+    throw new AppError(422, "El identificador de ciudad debe ser un número entero positivo");
   }
 
   const city = await cityRepository.findById(cityId);
