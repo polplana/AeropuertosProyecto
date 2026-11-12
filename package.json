@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --watch src/app.js"
+    "start": "node --watch src/app.js",
+    "import": "node src/importer/index.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "csv-parse": "^7.0.3",
     "dotenv": "^18.0.9",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
