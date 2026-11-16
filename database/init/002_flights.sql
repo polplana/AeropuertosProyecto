@@ -43,7 +43,7 @@ CREATE TABLE flights (
   KEY idx_flights_airline (airline_id),
   CONSTRAINT fk_flights_airline
     FOREIGN KEY (airline_id) REFERENCES airlines (id)
-    ON UPDATE CASCADE
+    ON UPDATE RESTRICT
     ON DELETE SET NULL,
   CONSTRAINT fk_flights_source_airport
     FOREIGN KEY (source_airport_id) REFERENCES airports (id)
