@@ -1,6 +1,7 @@
 import { pool } from "../config/database.js";
 import { importAirports } from "./importAirports.js";
 import { importAirlines } from "./importAirlines.js";
+import { importRoutes } from "./importRoutes.js";
 
 async function main() {
   try {
@@ -11,6 +12,9 @@ async function main() {
 
     const resumenAerolineas = await importAirlines(pool);
     console.log("Aerolíneas:", resumenAerolineas);
+
+    const resumenRutas = await importRoutes(pool);
+    console.log("Rutas:", resumenRutas);
 
     console.log("\nImportación finalizada.");
   } catch (error) {
