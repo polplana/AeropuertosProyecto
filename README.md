@@ -1,6 +1,6 @@
-# Práctica: Ciudades y Aeropuertos
+# Proyecto: Vuelos y Buscador Público de Aeropuertos
 
-API REST con Node.js, Express y MySQL para gestionar ciudades y aeropuertos con autenticación JWT y roles (`user` y `admin`).
+API REST desarrollada con Node.js, Express y MySQL que permite gestionar ciudades y aeropuertos (mediante autenticación JWT y roles), así como consultar rutas aéreas y conexiones entre ciudades de forma pública a partir del dataset de OpenFlights.
 
 ---
 
@@ -11,13 +11,36 @@ API REST con Node.js, Express y MySQL para gestionar ciudades y aeropuertos con 
    cp .env.example .env
    ```
 
-2. **Arrancar con Docker:**
+2. **Descargar los datasets de OpenFlights:**
+   Crear la carpeta `data/openflights/` y descargar los tres ficheros fuente:
+   * [`airports.dat`](https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat)
+   * [`airlines.dat`](https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat)
+   * [`routes.dat`](https://raw.githubusercontent.com/jpatokal/openflights/master/data/routes.dat)
+
+   Estructura esperada:
+   ```
+   data/
+   └── openflights/
+       ├── airports.dat
+       ├── airlines.dat
+       └── routes.dat
+   ```
+
+3. **Arrancar los contenedores con Docker:**
    ```bash
    docker compose up -d --build
    ```
-   La base de datos se inicializa automáticamente con el archivo `database/schema.sql`.
+   La base de datos MySQL se inicializa automáticamente en orden:
+   * `database/init/001_schema.sql`: Estructura inicial (usuarios, ciudades y aeropuertos base).
+   * `database/init/002_flights.sql`: Migración con las tablas `airlines`, `flights` y columnas `openflights_id` e `icao_code`.
 
-3. **Comprobar el servidor:**
+4. **Ejecutar la importación del dataset:**
+   El proceso es idempotente (se puede ejecutar varias veces sin duplicar registros):
+   ```bash
+   docker compose exec node npm run import
+   ```
+
+5. **Comprobar el estado del servidor:**
    * `http://localhost:3000/`
    * `http://localhost:3000/health`
 
@@ -25,41 +48,60 @@ API REST con Node.js, Express y MySQL para gestionar ciudades y aeropuertos con 
 
 ## 2. Estructura del proyecto
 
-* `src/config/`: Conexión a la base de datos y configuración del entorno.
-* `src/controllers/`: Controladores que reciben las peticiones y envían las respuestas.
-* `src/routes/`: Definición de rutas (`/api/auth`, `/api/cities`, `/api/airports`).
-* `src/services/`: Lógica de la aplicación y comprobaciones.
-* `src/repositories/`: Consultas a la base de datos MySQL.
-* `src/validators/`: Validación de los datos enviados en las peticiones.
-* `src/middleware/`:
-  * `authenticate.js`: Comprueba el token JWT para acceder a las rutas protegidas (devuelve 401 si no es válido).
-  * `authorizeAdmin.js`: Comprueba que el usuario sea administrador para crear o modificar (devuelve 403 si no lo es).
-  * `errorHandler.js`: Manejo de errores de la aplicación.
+* `src/config/`: Conexión a la base de datos MySQL y configuración.
+* `src/controllers/`: Controladores para endpoints de autenticación, gestión y rutas públicas.
+* `src/importer/`: Scripts de importación y procesamiento ETL de OpenFlights.
+* `src/middleware/`: Middlewares de autenticación JWT (`authenticate.js`), control de rol admin (`authorizeAdmin.js`) y manejo centralizado de errores (`errorHandler.js`).
+* `src/repositories/`: Consultas SQL a MySQL (ciudades, aeropuertos, usuarios y rutas).
+* `src/routes/`: Definición de routers (`/api/auth`, `/api/cities`, `/api/airports`, `/api/public`).
+* `src/services/`: Lógica de negocio y algoritmo BFS para búsqueda de escalas.
+* `src/validators/`: Validación de datos de entrada y parámetros de consulta.
 
 ---
 
-## 3. Rutas de la API
+## 3. Endpoints de la API
+
+### Rutas Públicas (sin token requerido)
+* `GET /api/public/cities?search=...`: Buscar ciudades por nombre (coincidencia parcial, insensible a mayúsculas).
+* `GET /api/public/cities/:id/airports`: Consultar aeropuertos de una ciudad por su ID (422 si ID no es entero, 404 si no existe).
+* `GET /api/public/routes/direct?fromCityId=...&toCityId=...`: Buscar vuelos directos entre dos ciudades (`stops = 0`).
+* `GET /api/public/routes?fromCityId=...&toCityId=...&maxStops=...`: Buscador de rutas con hasta `maxStops` escalas (0 a 3, por defecto 0) usando algoritmo BFS para priorizar rutas con menor número de escalas.
 
 ### Autenticación (`/api/auth`)
 * `POST /api/auth/register`: Registro de usuario normal.
-* `POST /api/auth/login`: Login y obtención del token JWT.
-* `GET /api/auth/me`: Datos del usuario autenticado (requiere token).
+* `POST /api/auth/login`: Inicio de sesión y obtención del token JWT.
+* `GET /api/auth/me`: Perfil del usuario autenticado (requiere token).
 
-### Ciudades (`/api/cities`)
-* `GET /api/cities`: Listar ciudades (permite búsqueda con `?search=`).
-* `GET /api/cities/with-airports`: Listar ciudades que tienen aeropuertos.
-* `GET /api/cities/:id/airports`: Listar aeropuertos de una ciudad.
-* `POST /api/cities`: Crear una ciudad (solo admin).
-* `PUT /api/cities/:id`: Modificar una ciudad (solo admin).
+### Gestión de Ciudades (`/api/cities`)
+* `GET /api/cities`: Listar ciudades (requiere token).
+* `GET /api/cities/with-airports`: Listar ciudades con recuento de aeropuertos (requiere token).
+* `GET /api/cities/:id/airports`: Listar aeropuertos de una ciudad (requiere token).
+* `POST /api/cities`: Crear ciudad (solo admin).
+* `PUT /api/cities/:id`: Modificar ciudad (solo admin).
 
-### Aeropuertos (`/api/airports`)
-* `GET /api/airports`: Listar aeropuertos (permite filtro con `?cityId=`).
-* `GET /api/airports/:id`: Consultar un aeropuerto por su ID.
-* `POST /api/airports`: Crear un aeropuerto (solo admin).
-* `PUT /api/airports/:id`: Modificar un aeropuerto (solo admin).
+### Gestión de Aeropuertos (`/api/airports`)
+* `GET /api/airports`: Listar aeropuertos con filtro `?cityId=` (requiere token).
+* `GET /api/airports/:id`: Consultar aeropuerto por ID (requiere token).
+* `POST /api/airports`: Crear aeropuerto (solo admin).
+* `PUT /api/airports/:id`: Modificar aeropuerto (solo admin).
 
 ---
 
-## 4. Pruebas realizadas
+## 4. Pruebas en `api.http`
 
-Se han probado todos los casos de la práctica utilizando el archivo `api.http` con la extensión REST Client de VS Code, comprobando el funcionamiento de la autenticación, las consultas, los permisos de administrador y el control de errores (códigos 200, 201, 401, 403, 404, 409 y 422).
+El archivo `api.http` contiene la suite de pruebas completa lista para ejecutar con la extensión REST Client de VS Code:
+* Secuencia completa de registro, login y obtención de tokens JWT.
+* Verificación de permisos de usuario normal frente a administrador (códigos 401 y 403).
+* Consultas públicas de ciudades y aeropuertos sin cabecera `Authorization`.
+* Búsqueda de vuelos directos (`/api/public/routes/direct`) y rutas con escalas (`/api/public/routes`).
+* Casos límite y control de errores: parámetros inválidos (422), recursos inexistentes (404) y duplicados (409).
+
+---
+
+## 5. Licencia y Atribución de Datos
+
+* **Atribución de la fuente:**
+  > Datos de aeropuertos, aerolíneas y rutas: OpenFlights, https://openflights.org/data.php. Dataset histórico; consultado para uso educativo bajo licencia Open Database License (ODbL).
+
+* **Limitaciones del dataset:**
+  Los datos corresponden a registros históricos de vuelos y rutas de OpenFlights recopilados entre 2014 y 2017. Representan conexiones y rutas aéreas entre aeropuertos, **no horarios comerciales ni vuelos en tiempo real**.
