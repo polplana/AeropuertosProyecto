@@ -234,3 +234,11 @@ Accept: application/json
 ### Consultar aeropuertos con id no válido (debe responder 422)
 GET {{baseUrl}}/api/public/cities/abc/airports
 Accept: application/json
+
+### Buscar vuelos directos entre dos ciudades (sin token)
+GET {{baseUrl}}/api/public/routes/direct?fromCityId=1&toCityId=3
+Accept: application/json
+
+### Buscar rutas con escalas entre dos ciudades (sin token)
+GET {{baseUrl}}/api/public/routes?fromCityId=1&toCityId=3&maxStops=1
+Accept: application/json

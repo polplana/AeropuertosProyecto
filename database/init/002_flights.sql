@@ -47,11 +47,11 @@ CREATE TABLE flights (
     ON DELETE SET NULL,
   CONSTRAINT fk_flights_source_airport
     FOREIGN KEY (source_airport_id) REFERENCES airports (id)
-    ON UPDATE CASCADE
+    ON UPDATE RESTRICT
     ON DELETE RESTRICT,
   CONSTRAINT fk_flights_destination_airport
     FOREIGN KEY (destination_airport_id) REFERENCES airports (id)
-    ON UPDATE CASCADE
+    ON UPDATE RESTRICT
     ON DELETE RESTRICT,
   CONSTRAINT chk_flights_different_airports
     CHECK (source_airport_id <> destination_airport_id)
