@@ -15,3 +15,8 @@ export async function searchDirectRoutes(req, res) {
   const result = await routeService.searchDirectRoutes(req.query);
   return res.status(200).json(result);
 }
+
+export async function searchRoutes(req, res) {
+  const result = await routeService.searchRoutesWithStops(req.query);
+  return res.status(200).json(result);
+}

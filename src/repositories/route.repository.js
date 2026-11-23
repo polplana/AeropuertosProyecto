@@ -25,3 +25,32 @@ export async function findDirectRoutes(fromCityId, toCityId) {
   );
   return rows;
 }
+
+export async function findOutgoingFlights(airportId) {
+  const [rows] = await pool.execute(
+    `
+      SELECT 
+        f.id AS flightId,
+        f.source_airport_id AS sourceAirportId,
+        f.destination_airport_id AS destinationAirportId,
+        al.name AS airlineName,
+        sa.iata_code AS fromIataCode,
+        sa.name AS fromAirportName,
+        sc.name AS fromCityName,
+        da.iata_code AS toIataCode,
+        da.name AS toAirportName,
+        dc.name AS toCityName,
+        da.city_id AS toCityId
+      FROM flights f
+      LEFT JOIN airlines al ON f.airline_id = al.id
+      INNER JOIN airports sa ON f.source_airport_id = sa.id
+      INNER JOIN cities sc ON sa.city_id = sc.id
+      INNER JOIN airports da ON f.destination_airport_id = da.id
+      INNER JOIN cities dc ON da.city_id = dc.id
+      WHERE f.source_airport_id = ? AND f.stops = 0
+      ORDER BY f.id ASC
+    `,
+    [airportId]
+  );
+  return rows;
+}
